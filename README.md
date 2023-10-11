@@ -1,1 +1,1 @@
-Acabou por hoje
+.
