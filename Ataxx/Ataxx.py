@@ -95,14 +95,6 @@ class ataxx():
         self.all_moves()
         self.player_blue_turn = not self.player_blue_turn
 
-    def update_board2(self, board, x, y, origin):
-        for i in range(max(0, x-1), min(NB, x+2)):
-            for j in range(max(0, y-1), min(NB, y+2)):
-                if not board[pos[0]][pos[1]] == 0:
-                    board[i][j]=board[x][y]
-        if x-origin[0]== 2 or y-origin[1]== 2 or x-origin[0]== -2 or y-origin[1]== -2:
-            board[origin[0]][origin[1]]=0
-
     def all_moves(self):
         global moves_blue_global
         global moves_red_global
@@ -247,6 +239,9 @@ class ataxx():
                             width=symbol_thickness, outline=red_color,
                             fill=red_color)
 
+   
+#----------------------------------- Verificaçao movimentos e jogadas ------------------------------------
+
     def draw_possible_moves(self, possible_moves):
 
         # desenha no tabuleiro as jogadas possiveis da bola selecionada
@@ -264,22 +259,7 @@ class ataxx():
         
 
         self.canvas.delete("possible")
-        
-   
-#----------------------------------- Verificaçao movimentos e jogadas ------------------------------------
-
-    def total_moves(board, player,ROWS):
-        moves = []
-        moves_aval = []
-        for peca in totalpecas(board, ROWS, player):
-            moves_aval = plays_eval(peca,ROWS,board)
-            for move in moves_aval:
-                temp_board = deepcopy(board)
-                temp_peca = (peca[0],peca[1])
-                new_board = simula_move(temp_peca, move, temp_board, player, ROWS)
-                moves.append(new_board)
-        return moves
-
+    
 #----------------------- MOUSE -----------------------------------------------------------
 
     def click(self, event):        
