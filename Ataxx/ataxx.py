@@ -1,18 +1,12 @@
-import socket
-import time
-import numpy as np
 from tkinter import *
 import numpy as np
 import copy
 import random as r
-import pickle
-
 
 b_w="BLUE WINS!!"
 r_w="RED WINS!!"
-t = "IT'S A TIE!!"
 
-print("Select board size (4 or 6): ")
+print("Escolha número de linhas/colunas (4 ou 6):")
 NB = int(input())  # Board number of rows/columns
 size_of_board = 600
 size_of_square = size_of_board/NB
@@ -23,6 +17,7 @@ red_color = '#F33E30'
 
 possible_moves_global=[]
 position_global=[]
+bool=False
 origin_pos=[]
 moves_blue_global=[]
 moves_red_global=[]
@@ -30,7 +25,7 @@ blue_pieces=[]
 red_pieces=[]
 board2=[]
 
-class ServerAtaxx():
+class ataxx():
     def __init__(self):
         self.window = Tk()
         self.window.title('Ataxx')
@@ -44,8 +39,13 @@ class ServerAtaxx():
         self.board[NB-1][0]=2
         self.player_blue_turn = True
         self.game_ended = False
-        self.human_has_played = False
         self.init_draw_board()
+        self.mainloop()
+
+
+    def mainloop(self):
+        while not self.game_ended:
+            self.window.update()
 
     #----------------DESENHO DO TABULEIRO---------------------------------------------------------------------------------------------------------
 
@@ -74,7 +74,6 @@ class ServerAtaxx():
 
 
     def update_board(self, x, y, origin):
-        if self.game_ended: return
         for i in range(max(0, x-1), min(NB, x+2)):
             for j in range(max(0, y-1), min(NB, y+2)):
                 if not self.is_square_clear([i,j]):
@@ -112,7 +111,6 @@ class ServerAtaxx():
         moves_red_global=[]
 
     def no_moves(self, player):
-        if self.game_ended: return
         if player==1:
             for i in range(NB):
                 for j in range(NB):
@@ -150,20 +148,6 @@ class ServerAtaxx():
 
         return possible_moves
 
-    def get_positions(self, player):
-        pos = np.argwhere(self.board == player)
-        return pos.tolist()
-
-    def get_all_possible_moves(self, positions):
-        all_moves = {}
-
-        for pos in positions:
-            moves = self.possible_moves(pos)
-            all_moves[tuple(pos)] = moves
-
-        return all_moves
-
-
     def score(self):
         cont_blue=0
         cont_red=0
@@ -189,14 +173,13 @@ class ServerAtaxx():
 
 
     def game_is_over(self, red, blue):
+        self.game_ended = True
         print()
         if blue>red:
             print(b_w)
-        elif blue<red:
-            print(r_w)
         else:
-            print(t)
-        self.game_ended = True
+            print(r_w)
+        self.clear_possible_moves()
 
 #----------------------TRANSFORMAR EM MATRIZ PARA APLICAR REGRAS---------------
 
@@ -210,6 +193,9 @@ class ServerAtaxx():
 
 #-----------------------DESENHAR PECAS----------------------------------------
     def draw_whitespace(self, grid_pos):
+
+
+
         self.canvas.create_rectangle(grid_pos[0] - symbol_size, grid_pos[1] - symbol_size,
                             grid_pos[0] + symbol_size, grid_pos[1] + symbol_size,
                             width=symbol_thickness, outline="white",
@@ -224,7 +210,6 @@ class ServerAtaxx():
                             width=symbol_thickness, outline=blue_color,
                             fill=blue_color)
 
-
     def draw_red(self, logical_pos):
         logical_pos = np.array(logical_pos)
         grid_pos = self.convert_logical_to_grid_position(logical_pos)
@@ -236,54 +221,22 @@ class ServerAtaxx():
 
 #----------------------------------- Verificaçao movimentos e jogadas ------------------------------------
 
-    # desenha no tabuleiro as jogadas possiveis da bola selecionada
     def draw_possible_moves(self, possible_moves):
+
+        # desenha no tabuleiro as jogadas possiveis da bola selecionada
+
         moves=[0]*len(possible_moves)
         for i in range(len(possible_moves)):
             moves[i]=self.convert_logical_to_grid_position(possible_moves[i])
             self.canvas.create_oval(moves[i][0]-symbol_size, moves[i][1] - symbol_size,
                                     moves[i][0]+symbol_size, moves[i][1]+ symbol_size,
                                     width=symbol_thickness, outline="gray", fill="gray", tags="possible")
-        self.window.update()
 
 
     def clear_possible_moves(self):
         self.canvas.delete("possible")
 
 #----------------------- MOUSE -----------------------------------------------------------
-
-    def handle_client(self, origin, logical_pos):
-        if self.game_ended: return
-        if self.board[origin[0]][origin[1]] == 1 and self.player_blue_turn:
-            possible_moves_global = self.possible_moves(origin)
-            time.sleep(1)
-            self.draw_possible_moves(possible_moves_global)
-            if not np.array_equal(possible_moves_global, []):
-                self.handle_client2(origin, logical_pos)
-
-        elif self.board[origin[0]][origin[1]] == 2 and not self.player_blue_turn:
-            possible_moves_global = self.possible_moves(origin)
-            time.sleep(1)
-            self.draw_possible_moves(possible_moves_global)
-            if not np.array_equal(possible_moves_global, []):
-                self.handle_client2(origin, logical_pos)
-
-
-    def handle_client2(self, origin_pos, position_global):
-        if self.game_ended: return
-        if self.player_blue_turn:
-            player=1
-        else:
-            player=2
-        if self.valid_move(position_global):
-            if self.player_blue_turn and self.board[origin_pos[0]][origin_pos[1]] == 1:
-                self.draw_blue(position_global)
-                self.execute_move(position_global, origin_pos, player)
-
-            elif not self.player_blue_turn and self.board[origin_pos[0]][origin_pos[1]] == 2:
-                self.draw_red(position_global)
-                self.execute_move(position_global, origin_pos, player)
-        self.clear_possible_moves()
 
     def click(self, event):
         if self.game_ended: return
@@ -292,8 +245,8 @@ class ServerAtaxx():
         global origin_pos
         global possible_moves_global
         origin_pos = logical_pos
+
         if self.board[logical_pos[0]][logical_pos[1]] == 1 and self.player_blue_turn:
-            print(f"Origin: {origin_pos}")
             possible_moves_global = self.possible_moves(logical_pos)
 
             if not np.array_equal(possible_moves_global, []):
@@ -301,7 +254,6 @@ class ServerAtaxx():
             self.draw_possible_moves(possible_moves_global)
 
         elif self.board[logical_pos[0]][logical_pos[1]] == 2 and not self.player_blue_turn:
-            print(f"Origin: {origin_pos}")
             possible_moves_global = self.possible_moves(logical_pos)
 
             if not np.array_equal(possible_moves_global, []):
@@ -324,11 +276,9 @@ class ServerAtaxx():
                 position_global = logical_pos
                 bool=True
         bool = True
-        print(f'Move: {position_global}')
         self.click2()
         possible_moves_global=[]
         position_global=[]
-        self.human_has_played = True
 
 
     def click2(self):
@@ -360,100 +310,4 @@ class ServerAtaxx():
         return False
 
 
-Game = "Ataxx"  # type of game
-
-def start_server(host='localhost', port=5000):
-
-    print("Select Player 1 (H for human, A for AI): ")
-    player1_type = input().upper()
-    print("Select Player 2 (H for human, A for AI): ")
-    player2_type = input().upper()
-
-    if player1_type=="H" and player2_type=="H":
-        agent1 = 0
-        agent2 = 0
-    else:
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind((host, port))
-        server_socket.listen(2)
-
-        if player1_type=="A" and player2_type=="A":
-            print("Waiting for two agents to connect...")
-            agent1, addr1 = server_socket.accept()
-            print("Agent 1 connected from", addr1)
-            bs = b'AG1 ' + Game.encode()
-            agent1.sendall(bs)
-            agent2, addr2 = server_socket.accept()
-            print("Agent 2 connected from", addr2)
-            bs = b'AG2 ' + Game.encode()
-            agent2.sendall(bs)
-        if player1_type=="A" and player2_type=="H":
-            print("Waiting for one agent to connect...")
-            agent1, addr1 = server_socket.accept()
-            print("Agent 1 connected from", addr1)
-            bs = b'AG1 ' + Game.encode()
-            agent1.sendall(bs)
-            agent2 = 0
-        if player1_type=="H" and player2_type=="A":
-            print("Waiting for one agent to connect...")
-            agent1 = 0
-            agent2, addr2 = server_socket.accept()
-            print("Agent 2 connected from", addr2)
-            bs = b'AG2 ' + Game.encode()
-            agent2.sendall(bs)
-
-    print("------------------------")
-    agents = [agent1, agent2]
-    current_agent = 0
-
-    jog = 0
-
-    game = ServerAtaxx()
-
-    while not game.game_ended:
-        game.window.update()
-        if agents[current_agent]!=0:
-            posicoes = game.get_positions(current_agent+1)
-            all_pos = game.get_all_possible_moves(posicoes)
-            all_pos_bytes = pickle.dumps(all_pos)
-            agents[current_agent].sendall(all_pos_bytes)
-            try:
-                data = agents[current_agent].recv(1024)
-                selected_key, selected_object = pickle.loads(data)
-                origin = np.array(selected_key)
-                move = np.array(selected_object)
-                if not data:
-                    break
-
-                # Process the move
-                print("Agent", current_agent+1, ": ")
-                print(f"Origin: {origin}")
-                print(f'Move: {move}')
-                game.handle_client(origin, move)
-                if agents[1-current_agent]==0:
-                    print("Agent", 1-current_agent+1, ": ")
-
-
-                # Switch to the other agent
-                current_agent = 1 - current_agent
-                jog += 1
-                if game.game_ended:
-                    break
-                time.sleep(1)
-
-            except Exception as e:
-                print("Error:", e)
-                break
-        if game.human_has_played:
-            current_agent = 1 - current_agent
-            game.human_has_played = False
-
-
-    print("\n-----------------\nGAME END\n-----------------\n")
-    time.sleep(1)
-    agent1.close()
-    agent2.close()
-    server_socket.close()
-
-if __name__ == "__main__":
-    start_server()
+ataxx()

@@ -16,7 +16,7 @@ def ai(received_all_pos):
     selected_key = next(key for key, objects_list in received_all_pos.items() if selected_object in objects_list)
     return selected_object, selected_key
 
-def connect_to_server(host='localhost', port=8080):
+def connect_to_server(host='localhost', port=5000):
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((host, port))
@@ -39,7 +39,7 @@ def connect_to_server(host='localhost', port=8080):
                 received_data = client_socket.recv(4096)  # Adjust buffer size as needed
                 # Deserialize the data back into a list
                 received_all_pos = pickle.loads(received_data)
-                print(f"Posicoes: {received_all_pos}")
+                print(f"Positions: {received_all_pos}")
 
                 move, origin = ai(received_all_pos)
 
