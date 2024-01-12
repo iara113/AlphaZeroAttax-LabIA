@@ -12,7 +12,7 @@ b_w="BLUE WINS!!"
 r_w="RED WINS!!"
 t = "IT'S A TIE!!"
 
-print("Select board size (4 or 6): ")
+print("Select board size (4 or 5 or 6): ")
 NB = int(input())  # Board number of rows/columns
 size_of_board = 600
 size_of_square = size_of_board/NB
@@ -149,20 +149,6 @@ class ServerAtaxx():
                     possible_moves.append([i,j])
 
         return possible_moves
-
-    def get_positions(self, player):
-        pos = np.argwhere(self.board == player)
-        return pos.tolist()
-
-    def get_all_possible_moves(self, positions):
-        all_moves = {}
-
-        for pos in positions:
-            moves = self.possible_moves(pos)
-            all_moves[tuple(pos)] = moves
-
-        return all_moves
-
 
     def score(self):
         cont_blue=0
@@ -413,10 +399,8 @@ def start_server(host='localhost', port=5000):
     while not game.game_ended:
         game.window.update()
         if agents[current_agent]!=0:
-            posicoes = game.get_positions(current_agent+1)
-            all_pos = game.get_all_possible_moves(posicoes)
-            all_pos_bytes = pickle.dumps(all_pos)
-            agents[current_agent].sendall(all_pos_bytes)
+            board = pickle.dumps(game.board)
+            agents[current_agent].sendall(board)
             try:
                 data = agents[current_agent].recv(1024)
                 selected_key, selected_object = pickle.loads(data)
@@ -451,8 +435,10 @@ def start_server(host='localhost', port=5000):
 
     print("\n-----------------\nGAME END\n-----------------\n")
     time.sleep(1)
-    agent1.close()
-    agent2.close()
+    if agent1!=0:
+        agent1.close()
+    if agent2!=0:
+        agent2.close()
     server_socket.close()
 
 if __name__ == "__main__":
