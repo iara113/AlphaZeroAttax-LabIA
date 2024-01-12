@@ -24,78 +24,56 @@ DOT_RADIUS = 2
 
 
 def make_grid(size):
-    """Return list of (start_point, end_point pairs) defining gridlines
-
-    Args:
-        size (int): size of grid
-
-    Returns:
-        Tuple[List[Tuple[float, float]]]: start and end points for gridlines
-    """
+    # Return list of (start_point, end_point pairs) defining gridlines
     start_points, end_points = [], []
 
-    # vertical start points (constant y)
+    # Vertical start points (constant y)
     xs = np.linspace(BOARD_BORDER, BOARD_WIDTH - BOARD_BORDER, size)
     ys = np.full((size), BOARD_BORDER)
     start_points += list(zip(xs, ys))
 
-    # horizontal start points (constant x)
+    # Horizontal start points (constant x)
     xs = np.full((size), BOARD_BORDER)
     ys = np.linspace(BOARD_BORDER, BOARD_WIDTH - BOARD_BORDER, size)
     start_points += list(zip(xs, ys))
 
-    # vertical end points (constant y)
+    # Vertical end points (constant y)
     xs = np.linspace(BOARD_BORDER, BOARD_WIDTH - BOARD_BORDER, size)
     ys = np.full((size), BOARD_WIDTH - BOARD_BORDER)
     end_points += list(zip(xs, ys))
 
-    # horizontal end points (constant x)
+    # Horizontal end points (constant x)
     xs = np.full((size), BOARD_WIDTH - BOARD_BORDER)
     ys = np.linspace(BOARD_BORDER, BOARD_WIDTH - BOARD_BORDER, size)
     end_points += list(zip(xs, ys))
 
-    return (start_points, end_points)
+    return start_points, end_points
 
 
 class HumanPlayer:
-
     def make_move(self, board):
-        # Check if the current player is an AI player
-        if isinstance(self, AI):
-            # Place a white stone on the board
-            board.place_stone((0, 0), WHITE)
-        else:
-            # For a human player, you might want to implement a way to get the
-            # move from the user
             pass
 
 class AI:
     def __init__(self, color):
         self.color = color
 
-    def make_move(self, board):
-        # Implement AI move generation logic here
-        # Construct alphaZero on the side and import here
-
-        # random move generator (valid moves only)
+    def make_move(self, board, n):
         valid_moves = [(col, row) for col in range(board.shape[0]) for row in range(board.shape[1]) if board[col, row] == 0]
-        if not valid_moves:
+
+        # Create a new list for valid moves without autocaptures
+        valid_moves_without_autocapture = [move for move in valid_moves if not autocapture(board, self.color, *move, n)]
+
+        # Filter out invalid moves
+        valid_moves_without_invalid = [move for move in valid_moves_without_autocapture if is_valid_move(*move, board)]
+        if not valid_moves_without_invalid:
             return None  # No valid moves available
 
-        return valid_moves[np.random.choice(len(valid_moves))]
+        return valid_moves_without_invalid[np.random.choice(len(valid_moves_without_invalid))]
+
 
 
 def xy_to_colrow(x, y, size):
-    """Convert x,y coordinates to column and row number
-
-    Args:
-        x (float): x position
-        y (float): y position
-        size (int): size of grid
-
-    Returns:
-        Tuple[int, int]: column and row numbers of intersection
-    """
     inc = (BOARD_WIDTH - 2 * BOARD_BORDER) / (size - 1)
     x_dist = x - BOARD_BORDER
     y_dist = y - BOARD_BORDER
@@ -105,16 +83,6 @@ def xy_to_colrow(x, y, size):
 
 
 def colrow_to_xy(col, row, size):
-    """Convert column and row numbers to x,y coordinates
-
-    Args:
-        col (int): column number (horizontal position)
-        row (int): row number (vertical position)
-        size (int): size of grid
-
-    Returns:
-        Tuple[float, float]: x,y coordinates of intersection
-    """
     inc = (BOARD_WIDTH - 2 * BOARD_BORDER) / (size - 1)
     x = int(BOARD_BORDER + col * inc)
     y = int(BOARD_BORDER + row * inc)
@@ -122,15 +90,6 @@ def colrow_to_xy(col, row, size):
 
 
 def has_no_liberties(board, group):
-    """Check if a stone group has any liberties on a given board.
-
-    Args:
-        board (object): game board (size * size matrix)
-        group (List[Tuple[int, int]]): list of (col,row) pairs defining a stone group
-
-    Returns:
-        [boolean]: True if group has any liberties, False otherwise
-    """
     for x, y in group:
         if x > 0 and board[x - 1, y] == 0:
             return False
@@ -144,15 +103,6 @@ def has_no_liberties(board, group):
 
 
 def get_stone_groups(board, color):
-    """Get stone groups of a given color on a given board
-
-    Args:
-        board (object): game board (size * size matrix)
-        color (str): name of color to get groups for
-
-    Returns:
-        List[List[Tuple[int, int]]]: list of list of (col, row) pairs, each defining a group
-    """
     size = board.shape[0]
     color_code = 1 if color == "black" else 2
     xs, ys = np.where(board == color_code)
@@ -165,22 +115,25 @@ def get_stone_groups(board, color):
 
 
 def is_valid_move(col, row, board):
-    """Check if placing a stone at (col, row) is valid on board
-
-    Args:
-        col (int): column number
-        row (int): row number
-        board (object): board grid (size * size matrix)
-
-    Returns:
-        boolean: True if move is valid, False otherewise
-    """
-    # TODO: check for ko situation (infinite back and forth)
     if col < 0 or col >= board.shape[0]:
         return False
     if row < 0 or row >= board.shape[0]:
         return False
     return board[col, row] == 0
+
+def autocapture(b, color, col, row, n):
+    board = b.copy()
+    board[col, row] = n
+    group = None
+    for group in get_stone_groups(board, color):
+        if (col, row) in group:
+            break
+    if group==None:
+        return False
+    if has_no_liberties(board, group):
+        return True
+
+    return False
 
 
 class Game:
@@ -206,7 +159,6 @@ class Game:
 
 
     def clear_screen(self):
-
         # fill board and add gridlines
         self.screen.fill(BOARD_BROWN)
         for start_point, end_point in zip(self.start_points, self.end_points):
@@ -240,7 +192,6 @@ class Game:
 
         self.black_turn = not self.black_turn
         self.draw()
-
         # Check for end-of-game condition after a pass
         if self.check_end_game():
             self.print_final_scores()
@@ -248,17 +199,42 @@ class Game:
             sys.exit()
 
     def print_final_scores(self):
-        score_black = self.prisoners['black']
-        score_white = self.prisoners['white']
+        territory_black, territory_white, stones_black, stones_white = self.calculate_score()
         print("Game Over!")
-        print(f"Black's Prisoners: {score_black}")
-        print(f"White's Prisoners: {score_white}")
-        if score_black > score_white:
+        print(f"Black - Territory: {territory_black}, Stones: {stones_black}; Total Score: {territory_black+stones_black}")
+        print(f"White - Territory: {territory_white}, Stones: {stones_white}; Total Score: {territory_white+stones_white}")
+
+        if territory_black + stones_black > territory_white + stones_white:
             print("Black wins!")
-        elif score_black < score_white:
+        elif territory_black + stones_black < territory_white + stones_white:
             print("White wins!")
         else:
             print("It's a tie!")
+
+    def calculate_score(self):
+        """Calculate the score of the game."""
+        territory_black, territory_white, stones_black, stones_white = 0, 0, 0, 0
+
+        for col in range(self.size):
+            for row in range(self.size):
+                color = self.board[col, row]
+                if color == 1:
+                    stones_black += 1
+                elif color == 2:
+                    stones_white += 1
+                elif color == 0:
+                    neighbors = [(col + i, row + j) for i, j in [(-1, 0), (1, 0), (0, -1), (0, 1)] if
+                                0 <= col + i < self.size and 0 <= row + j < self.size]
+                    if all(0 <= n_col < self.size and 0 <= n_row < self.size and self.board[n_col, n_row] != color
+                        for n_col, n_row in neighbors):
+                        # Empty intersection surrounded by opponent's stones
+                        territory_black += 1
+                    elif all(0 <= n_col < self.size and 0 <= n_row < self.size and self.board[n_col, n_row] != color
+                            for n_col, n_row in neighbors):
+                        # Empty intersection surrounded by opponent's stones
+                        territory_white += 1
+
+        return territory_black, territory_white, stones_black, stones_white
 
     def update(self):
         events = pygame.event.get()
@@ -267,6 +243,7 @@ class Game:
                 self.handle_click()
             if event.type == pygame.QUIT:
                 self.print_final_scores()
+                pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_p:
@@ -279,11 +256,14 @@ class Game:
         if not is_valid_move(col, row, self.board):
             self.ZOINK.play()
             return
-
+        color= "black" if self.current_player == self.player1 else "white"
         # update board array
-        #self.board[col, row] = 1 if self.black_turn else 2
+        #self.board[col, row] = 1 if self.current_player == self.player1 else 2
+        if autocapture(self.board, color, col, row, 1 if self.current_player == self.player1 else 2):
+            self.ZOINK.play()
+            self.board[col, row] = 0
+            return
         self.board[col, row] = 1 if self.current_player == self.player1 else 2
-
         self.handle_captures(col, row, "black" if self.current_player == self.player1 else "white")
 
         # change turns and draw screen
@@ -291,6 +271,7 @@ class Game:
         self.black_turn = not self.black_turn
         self.current_player = self.player1 if self.black_turn else self.player2  # Update current player
         self.draw()
+
 
     def handle_captures(self, col, row, color):
         # Handle captures for a given move at (col, row) and color
@@ -303,20 +284,23 @@ class Game:
                 for i, j in group:
                     self.board[i, j] = 0
                 self.prisoners[color] += len(group)
+                print(f'Player {color} has {self.prisoners[color]} prisoners')
 
-        if not capture_happened:
-            group = None
-            for group in get_stone_groups(self.board, color):
-                if (col, row) in group:
-                    break
-            if has_no_liberties(self.board, group):
-                if not self.current_player_is_human():
-                    player_name = "Player 1" if color == "black" else "Player 2"
-                    print(f"{player_name} has no liberties.")
-                self.ZOINK.play()
-                self.board[col, row] = 0
-                return
 
+    def make_ai_move(self):
+        move = self.current_player.make_move(self.board, 1 if self.current_player == self.player1 else 2)
+        if move==None:
+            self.pass_move()
+            return
+        self.handle_captures(move[0], move[1], "black" if self.current_player == self.player1 else "white")
+        self.board[move[0], move[1]] = 1 if self.current_player == self.player1 else 2
+        self.black_turn = not self.black_turn  # Explicitly update the turn after the human move
+        self.current_player = self.player1 if self.black_turn else self.player2
+        self.draw()
+        if self.check_end_game():
+            self.print_final_scores()
+            pygame.quit()
+            sys.exit()
 
     def draw(self):
         # draw stones - filled circle and antialiased ring
@@ -331,9 +315,9 @@ class Game:
             gfxdraw.filled_circle(self.screen, x, y, STONE_RADIUS, WHITE)
 
         # text for score and turn info
+        territory_black, territory_white, stones_black, stones_white = self.calculate_score()
         score_msg = (
-            f"Black's Prisoners: {self.prisoners['black']}"
-            + f"     White's Prisoners: {self.prisoners['white']}"
+            f"Black - Territory: {territory_black}, Stones: {stones_black} | White - Territory: {territory_white}, Stones: {stones_white}"
         )
         txt = self.font.render(score_msg, True, BLACK)
         self.screen.blit(txt, SCORE_POS)
@@ -370,22 +354,6 @@ if __name__ == "__main__":
         if g.current_player_is_human():
             g.update()
 
-        # Check for game end conditions here if needed
-        if not g.current_player_is_human():
-            time.sleep(1)
-            move = g.current_player.make_move(g.board)
-            # Check if the move is valid
-            if move is not None and is_valid_move(*move, g.board):
-                g.board[move[0], move[1]] = 1 if g.current_player == g.player1 else 2
-                g.black_turn = not g.black_turn  # Explicitly update the turn after the human move
-                g.current_player = g.player1 if g.black_turn else g.player2
-                g.handle_captures(move[0], move[1], "black" if g.current_player == g.player2 else "white")
-                g.CLICK.play()
-                g.draw()
-
-            else:
-                g.pass_move()
-                print("AI couldn't find a valid move.")
-
-
-        pygame.time.wait(100)
+        else:
+            #time.sleep(1)
+            g.make_ai_move()
