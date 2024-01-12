@@ -207,6 +207,7 @@ class ServerGo:
                     neighbors = [(col + i, row + j) for i, j in [(-1, 0), (1, 0), (0, -1), (0, 1)] if
                                 0 <= col + i < self.size and 0 <= row + j < self.size]
                     if all(0 <= n_col < self.size and 0 <= n_row < self.size and self.board[n_col, n_row] != color
+                        for n_col, n_row in neighbors) and all(0 <= n_col < self.size and 0 <= n_row < self.size and self.board[n_col, n_row] == 1
                         for n_col, n_row in neighbors):
                         # Empty intersection surrounded by opponent's stones
                         territory_black += 1
